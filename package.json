@@ -1,14 +1,18 @@
 {
   "name": "properties-htmllint",
   "description": "HTML linter for .properties files",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "author": "Peter deHaan <peter@deseloper.com> (https://about.me/peterdehaan)",
+  "bin": "cli.js",
   "bugs": {
     "url": "https://github.com/pdehaan/properties-htmllint/issues"
   },
   "dependencies": {
+    "dompurify": "1.0.8",
     "glob": "7.1.3",
     "htmllint": "0.7.2",
+    "jsdom": "13.0.0",
+    "meow": "5.0.0",
     "properties-parser": "0.3.1"
   },
   "homepage": "https://github.com/pdehaan/properties-htmllint#readme",

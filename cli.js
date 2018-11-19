@@ -1,52 +1,64 @@
 #!/usr/bin/env node
 
 const glob = require("glob").sync;
-const lint = require("htmllint");
-const parser = require("properties-parser");
+const meow = require("meow");
 
-const [, , argv] = process.argv;
+const { lintLocale } = require("./index");
 
-run(argv);
+const USAGE_DOCS = `
+  USAGE:
+    npx pdehaan/properties-htmllint './locales/*/*.properties' [--ignore-keys=comma,separated] [--warn-only]
 
-async function run(g) {
-  try {
-    if (!g) {
-      throw new Error("Usage: npx pdehaan/properties-htmllint './locales/*/*.properties'");
+  FLAGS:
+    --ignore-keys: Comma separated list of keys to ignore.
+    --warn-only: Don't exit w/ an error status code if htmllint errors were found.
+`;
+
+const cli = meow(USAGE_DOCS, {
+  flags: {
+    ignoreKeys: {
+      type: "array",
+      default: []
+    },
+    warnOnly: {
+      type: "boolean",
+      default: false
     }
-    for (const file of glob(g)) {
-      await lintLocale(file, ["addonAuthorsList"]);
-    }
-  } catch (err) {
+  }
+});
+
+main(cli.input, cli.flags)
+  .catch(err => {
     console.error(err.message);
     process.exit(1);
-  }
-}
-
-async function lintLocale(file, ignoreKeys=[]) {
-  let errors = [];
-  const properties = parser.read(file);
-  for (const [name, value] of Object.entries(properties)) {
-    if (ignoreKeys.includes(name)) continue;
-    const results = (await lintHtml(file, {name, value}))
-      .map(result => {
-        Object.assign(result, {name, value});
-        return result;
-      });
-    errors = errors.concat(results);
-
-  }
-  if (errors.length) {
-    console.info(file);
-    errors.forEach(err => {
-      console.log(`  - [${err.code}] ${err.rule}: "${err.name} = ${err.value}"`);
-    });
-  }
-}
-
-async function lintHtml(locale, data) {
-  return await lint(data.value + "\n", {
-    "id-class-style": "dash",
-    "spec-char-escape": false,
-    "tag-bans": ["style", "i"]
   });
+
+/**
+ * Main entry point!
+ * @param {array} paths An array of paths from the CLI.
+ * @param {object} flags An object containing any flags passed via the CLI.
+ */
+async function main(paths, flags) {
+  if (!paths.length) {
+    // NOTE: this will exit the process w/ an errorCode of 2.
+    return cli.showHelp();
+  }
+  // For each path specified on the CLI...
+  for (const _path of paths) {
+    // Convert the path glob into an array of files...
+    const files = glob(_path);
+    // And loop over each file...
+    for (const file of files) {
+      const errors = await lintLocale(file, flags);
+      if (errors.length) {
+        if (!flags.warnOnly) {
+          process.exitCode = 1;
+        }
+        console.error(`${file}:`);
+        errors.forEach(err => {
+          console.error(`  [✘] ${err.rule}: ${err.item.name} = ${err.item.value}`);
+        });
+      }
+    }
+  }
 }
